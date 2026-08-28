@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0b0e14">
+    <title>Aurum · XAU/USD Live</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Aurum inicio"><span class="brand-mark">A</span><span>AURUM</span></a>
+      <div class="market-state"><span class="pulse"></span><span>Mercado en vivo</span></div>
+      <div class="clock" id="clock">--:--:-- UTC</div>
+    </header>
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">METALES PRECIOSOS · SPOT</p>
+          <div class="instrument"><span class="gold-icon">Au</span><h1>XAU / USD</h1><span class="tag">ORO</span></div>
+          <p class="subtitle">Oro al contado · Dólar estadounidense</p>
+        </div>
+        <div class="quote-panel">
+          <p class="label">ÚLTIMO PRECIO</p>
+          <div class="price-line"><strong id="last-price">—</strong><span>USD</span></div>
+          <p id="price-change" class="change">Esperando cotización…</p>
+        </div>
+      </section>
+
+      <section class="chart-card">
+        <div class="toolbar">
+          <div class="timeframes" role="group" aria-label="Seleccionar intervalo">
+            <span>INTERVALO</span>
+            <button data-timeframe="1m">1m</button><button class="active" data-timeframe="5m">5m</button>
+            <button data-timeframe="15m">15m</button><button data-timeframe="30m">30m</button>
+            <button data-timeframe="1h">1H</button><button data-timeframe="4h">4H</button>
+            <button data-timeframe="1d">1D</button>
+          </div>
+          <div class="auto-refresh"><span class="refresh-icon">↻</span> Actualiza cada 15s</div>
+        </div>
+        <div class="ohlc" id="ohlc"><span>O —</span><span>H —</span><span>L —</span><span>C —</span></div>
+        <div class="chart-wrap">
+          <canvas id="chart" aria-label="Gráfica de velas de XAU/USD"></canvas>
+          <div class="loading" id="loading"><span></span>Conectando con el mercado…</div>
+          <div class="error hidden" id="error"></div>
+        </div>
+        <div class="chart-footer"><span><i class="legend up"></i> Alcista</span><span><i class="legend down"></i> Bajista</span><span class="source">Datos: Yahoo Finance · Cotización indicativa</span></div>
+      </section>
+    </main>
+    <footer><span>● SISTEMA OPERATIVO</span><p>Esta herramienta es informativa y no constituye asesoramiento financiero.</p><span>v0.1.0</span></footer>
+    <script src="/app.js"></script>
+  </body>
+</html>
