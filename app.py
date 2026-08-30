@@ -14,7 +14,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).parent
 STATIC_DIR = ROOT / "static"
-YAHOO_URL = "https://query1.finance.yahoo.com/v8/finance/chart/XAUUSD=X"
+YAHOO_URL = "https://query1.finance.yahoo.com/v8/finance/chart/GC=F"
 
 # Yahoo limita las consultas de 1 minuto a ventanas inferiores a ocho días. Las
 # ventanas explícitas también permiten pedir el bloque anterior al arrastrar.
