@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {simpleMovingAverage, exponentialMovingAverage, averageTrueRange, relativeStrengthIndex, normalizePeriod, normalizeLineWidth} = require('../static/indicators.js');
+const {simpleMovingAverage, exponentialMovingAverage, averageTrueRange, relativeStrengthIndex, normalizePeriod, normalizeLineWidth, findRelativeExtrema} = require('../static/indicators.js');
 
 test('SMA starts after a complete period and keeps a rolling average', () => {
   assert.deepEqual(simpleMovingAverage([1, 2, 3, 4, 5], 3), [null, null, 2, 3, 4]);
@@ -38,4 +38,18 @@ test('line widths support half steps and stay within the drawing limits', () => 
   assert.equal(normalizeLineWidth(0), 1);
   assert.equal(normalizeLineWidth(8), 5);
   assert.equal(normalizeLineWidth('invalid'), 2);
+});
+
+test('relative extrema use candle highs and lows and ignore endpoints', () => {
+  const candles = [
+    {high: 10, low: 7},
+    {high: 15, low: 8},
+    {high: 12, low: 4},
+    {high: 14, low: 6},
+  ];
+  assert.deepEqual(findRelativeExtrema(candles), [
+    {index: 1, type: 'maximum', value: 15},
+    {index: 2, type: 'minimum', value: 4},
+  ]);
+  assert.deepEqual(findRelativeExtrema(candles.slice(0, 2)), []);
 });

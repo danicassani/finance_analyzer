@@ -21,7 +21,8 @@ const smaColors = ['#e7b95c', '#55b9f3', '#f17ca8', '#70d6a8', '#c792ea'];
 let nextSmaId = 2;
 let nextEmaId = 2;
 let atrPeriod = 14;
-const {simpleMovingAverage, exponentialMovingAverage, averageTrueRange, relativeStrengthIndex, normalizePeriod, normalizeLineWidth} = AurumIndicators;
+let extremaVisible = false;
+const {simpleMovingAverage, exponentialMovingAverage, averageTrueRange, relativeStrengthIndex, normalizePeriod, normalizeLineWidth, findRelativeExtrema} = AurumIndicators;
 
 const money = value => Number(value).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 const tickClock = () => document.querySelector('#clock').textContent = `${new Date().toISOString().slice(11, 19)} UTC`;
@@ -121,6 +122,7 @@ function draw() {
   for (let i = 0; i <= 5; i++) { const py = pad.top + i * (h-pad.top-pad.bottom)/5; ctx.strokeStyle='#202631'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(0,py+.5);ctx.lineTo(w,py+.5);ctx.stroke(); ctx.fillStyle='#626d80';ctx.fillText(money(max-i*(max-min)/5),w-pad.right+10,py+3); }
   const step=(w-pad.right-pad.left)/visible.length, body=Math.max(2,Math.min(8,step*.62));
   visible.forEach((c,i)=>{const x=pad.left+i*step+step/2, color=c.close>=c.open?'#21c58e':'#ef5b63';ctx.strokeStyle=color;ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(x,y(c.high));ctx.lineTo(x,y(c.low));ctx.stroke();const top=Math.min(y(c.open),y(c.close)),height=Math.max(1,Math.abs(y(c.close)-y(c.open)));ctx.fillRect(x-body/2,top,body,height);});
+  if (extremaVisible) drawExtrema(findRelativeExtrema(candles), start, end, y, step, pad.left);
   smaSeries.forEach(({settings, values}, index) => {
     drawLine(values, value => y(value), step, pad.left, settings.color, settings.width);
     const currentSma = [...values].reverse().find(value => value !== null);
@@ -139,6 +141,21 @@ function draw() {
   if (indicatorVisibility.rsi) { drawRsi(rsi, step, pad, w, panelTop, panelHeight); panelTop += panelHeight; }
   if (indicatorVisibility.atr) drawAtr(atr, step, pad, w, panelTop, panelHeight);
   const marks=5, timeY=panelCount ? h-panelHeight*panelCount-9 : h-9; for(let i=0;i<marks;i++){const index=Math.round(i*(visible.length-1)/(marks-1)),d=new Date(visible[index].time*1000),text=timeframe==='1d'?d.toLocaleDateString('es-ES',{day:'2-digit',month:'short'}):d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});ctx.fillStyle='#596477';ctx.fillText(text,pad.left+index*step,timeY);}
+}
+
+function drawExtrema(extrema, start, end, y, step, left) {
+  extrema.forEach(point => {
+    if (point.index < start || point.index >= end) return;
+    const x = left + (point.index - start) * step + step / 2;
+    ctx.beginPath();
+    ctx.arc(x, y(point.value), 5, 0, Math.PI * 2);
+    ctx.fillStyle = point.type === 'maximum' ? '#268cff' : '#ffd43b';
+    ctx.fill();
+    ctx.strokeStyle = '#0b0e14';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.lineWidth = 1;
+  });
 }
 
 function drawLine(values, y, step, left, color, width) {
@@ -201,6 +218,13 @@ function scheduleRefresh() {
 document.querySelectorAll('[data-timeframe]').forEach(button => button.addEventListener('click', () => {document.querySelector('.timeframes .active').classList.remove('active');button.classList.add('active');timeframe=button.dataset.timeframe;candles=[];viewEndIndex=null;loadData(true);}));
 document.querySelector('#zoom-in').addEventListener('click', () => updateZoom(-20));
 document.querySelector('#zoom-out').addEventListener('click', () => updateZoom(20));
+document.querySelector('#toggle-extrema').addEventListener('click', event => {
+  extremaVisible = !extremaVisible;
+  event.currentTarget.classList.toggle('active', extremaVisible);
+  event.currentTarget.setAttribute('aria-pressed', String(extremaVisible));
+  document.querySelector('#extrema-legend').classList.toggle('hidden', !extremaVisible);
+  draw();
+});
 document.querySelectorAll('[data-indicator]').forEach(input => input.addEventListener('change', () => {
   indicatorVisibility[input.dataset.indicator] = input.checked;
   draw();
