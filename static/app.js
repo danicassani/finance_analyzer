@@ -4,6 +4,11 @@ const loading = document.querySelector('#loading');
 const errorBox = document.querySelector('#error');
 let candles = [];
 let timeframe = '5m';
+let visibleCandleCount = 120;
+let refreshTimer;
+let refreshInterval = 15000;
+const MIN_VISIBLE_CANDLES = 20;
+const MAX_VISIBLE_CANDLES = 400;
 
 const money = value => Number(value).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 const tickClock = () => document.querySelector('#clock').textContent = `${new Date().toISOString().slice(11, 19)} UTC`;
@@ -41,7 +46,7 @@ function draw() {
   const ratio = window.devicePixelRatio || 1, rect = canvas.getBoundingClientRect();
   canvas.width = rect.width * ratio; canvas.height = rect.height * ratio; ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   const w = rect.width, h = rect.height, pad = {top: 18, right: 72, bottom: 30, left: 16};
-  const visible = candles.slice(-Math.min(120, Math.floor((w - pad.right) / 7)));
+  const visible = candles.slice(-Math.min(visibleCandleCount, candles.length));
   let min = Math.min(...visible.map(c => c.low)), max = Math.max(...visible.map(c => c.high));
   const range = max - min || 1; min -= range * .06; max += range * .06;
   const y = value => pad.top + (max - value) / (max - min) * (h - pad.top - pad.bottom);
@@ -54,6 +59,29 @@ function draw() {
   const marks=5; for(let i=0;i<marks;i++){const index=Math.round(i*(visible.length-1)/(marks-1)),d=new Date(visible[index].time*1000),text=timeframe==='1d'?d.toLocaleDateString('es-ES',{day:'2-digit',month:'short'}):d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});ctx.fillStyle='#596477';ctx.fillText(text,pad.left+index*step,h-9);}
 }
 
+function updateZoom(delta) {
+  visibleCandleCount = Math.max(MIN_VISIBLE_CANDLES, Math.min(MAX_VISIBLE_CANDLES, visibleCandleCount + delta));
+  document.querySelector('#zoom-level').textContent = `${Math.round(120 / visibleCandleCount * 100)}%`;
+  document.querySelector('#zoom-in').disabled = visibleCandleCount === MIN_VISIBLE_CANDLES;
+  document.querySelector('#zoom-out').disabled = visibleCandleCount === MAX_VISIBLE_CANDLES;
+  draw();
+}
+
+function scheduleRefresh() {
+  clearInterval(refreshTimer);
+  refreshTimer = setInterval(() => loadData(false), refreshInterval);
+}
+
 document.querySelectorAll('[data-timeframe]').forEach(button => button.addEventListener('click', () => {document.querySelector('.timeframes .active').classList.remove('active');button.classList.add('active');timeframe=button.dataset.timeframe;loadData(true);}));
+document.querySelector('#zoom-in').addEventListener('click', () => updateZoom(-20));
+document.querySelector('#zoom-out').addEventListener('click', () => updateZoom(20));
+canvas.addEventListener('wheel', event => {
+  event.preventDefault();
+  updateZoom(event.deltaY > 0 ? 20 : -20);
+}, {passive: false});
+document.querySelector('#refresh-interval').addEventListener('change', event => {
+  refreshInterval = Number(event.target.value);
+  scheduleRefresh();
+});
 window.addEventListener('resize', draw);
-loadData(true); setInterval(() => loadData(false), 15000);
+loadData(true); scheduleRefresh();
