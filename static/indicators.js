@@ -1,0 +1,51 @@
+(function exposeIndicators(global) {
+  function simpleMovingAverage(values, period) {
+    const result = Array(values.length).fill(null);
+    if (!Number.isInteger(period) || period <= 0) return result;
+    let sum = 0;
+    for (let index = 0; index < values.length; index += 1) {
+      sum += values[index];
+      if (index >= period) sum -= values[index - period];
+      if (index >= period - 1) result[index] = sum / period;
+    }
+    return result;
+  }
+
+  function relativeStrengthIndex(values, period = 14) {
+    const result = Array(values.length).fill(null);
+    if (!Number.isInteger(period) || period <= 0 || values.length <= period) return result;
+    let gains = 0, losses = 0;
+    for (let index = 1; index <= period; index += 1) {
+      const change = values[index] - values[index - 1];
+      gains += Math.max(change, 0); losses += Math.max(-change, 0);
+    }
+    let averageGain = gains / period, averageLoss = losses / period;
+    result[period] = rsiValue(averageGain, averageLoss);
+    for (let index = period + 1; index < values.length; index += 1) {
+      const change = values[index] - values[index - 1];
+      averageGain = (averageGain * (period - 1) + Math.max(change, 0)) / period;
+      averageLoss = (averageLoss * (period - 1) + Math.max(-change, 0)) / period;
+      result[index] = rsiValue(averageGain, averageLoss);
+    }
+    return result;
+  }
+
+  function rsiValue(averageGain, averageLoss) {
+    if (averageLoss === 0) return averageGain === 0 ? 50 : 100;
+    return 100 - (100 / (1 + averageGain / averageLoss));
+  }
+
+  function normalizePeriod(value, fallback = 20, minimum = 2, maximum = 200) {
+    const period = Math.round(Number(value));
+    return Math.max(minimum, Math.min(maximum, Number.isFinite(period) ? period : fallback));
+  }
+
+  function normalizeLineWidth(value, fallback = 2) {
+    const width = Number(value);
+    return Math.max(1, Math.min(5, Number.isFinite(width) ? width : fallback));
+  }
+
+  const api = {simpleMovingAverage, relativeStrengthIndex, normalizePeriod, normalizeLineWidth};
+  global.AurumIndicators = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+}(typeof globalThis === 'undefined' ? this : globalThis));

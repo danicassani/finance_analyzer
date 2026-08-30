@@ -37,6 +37,18 @@
             <button data-timeframe="1d">1D</button>
           </div>
           <div class="chart-controls">
+            <details class="indicator-dropdown">
+              <summary>Indicadores <span aria-hidden="true">⌄</span></summary>
+              <div class="indicator-menu" aria-label="Indicadores técnicos">
+                <div class="indicator-section">
+                  <div class="indicator-heading"><strong>Medias móviles simples</strong><button id="add-sma" type="button">+ Añadir</button></div>
+                  <div id="sma-list"></div>
+                </div>
+                <div class="indicator-row">
+                  <label><input data-indicator="rsi" type="checkbox" checked><i class="rsi-dot"></i>RSI 14</label>
+                </div>
+              </div>
+            </details>
             <div class="zoom-controls" role="group" aria-label="Controlar zoom de la gráfica">
               <button id="zoom-out" type="button" title="Alejar gráfica" aria-label="Alejar gráfica">−</button>
               <span id="zoom-level" aria-live="polite">100%</span>
@@ -60,6 +72,7 @@
       </section>
     </main>
     <footer><span>● SISTEMA OPERATIVO</span><p>Esta herramienta es informativa y no constituye asesoramiento financiero.</p><span>v0.1.0</span></footer>
+    <script src="/indicators.js"></script>
     <script src="/app.js"></script>
   </body>
 </html>
