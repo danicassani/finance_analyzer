@@ -37,11 +37,18 @@
             <button data-timeframe="1d">1D</button>
           </div>
           <div class="chart-controls">
-            <div class="indicator-controls" role="group" aria-label="Indicadores técnicos">
-              <span>INDICADORES</span>
-              <button class="indicator active" data-indicator="sma" type="button" aria-pressed="true"><i class="sma-dot"></i>SMA 20</button>
-              <button class="indicator active" data-indicator="rsi" type="button" aria-pressed="true"><i class="rsi-dot"></i>RSI 14</button>
-            </div>
+            <details class="indicator-dropdown">
+              <summary>Indicadores <span aria-hidden="true">⌄</span></summary>
+              <div class="indicator-menu" aria-label="Indicadores técnicos">
+                <div class="indicator-row">
+                  <label><input data-indicator="sma" type="checkbox" checked><i class="sma-dot"></i>Media móvil simple</label>
+                  <label class="period-setting">Periodo <input id="sma-period" type="number" value="20" min="2" max="200" step="1" inputmode="numeric" aria-label="Periodo de la media móvil simple"></label>
+                </div>
+                <div class="indicator-row">
+                  <label><input data-indicator="rsi" type="checkbox" checked><i class="rsi-dot"></i>RSI 14</label>
+                </div>
+              </div>
+            </details>
             <div class="zoom-controls" role="group" aria-label="Controlar zoom de la gráfica">
               <button id="zoom-out" type="button" title="Alejar gráfica" aria-label="Alejar gráfica">−</button>
               <span id="zoom-level" aria-live="polite">100%</span>

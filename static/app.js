@@ -15,7 +15,8 @@ let refreshInterval = 15000;
 const MIN_VISIBLE_CANDLES = 20;
 const MAX_VISIBLE_CANDLES = 400;
 const indicatorVisibility = {sma: true, rsi: true};
-const {simpleMovingAverage, relativeStrengthIndex} = AurumIndicators;
+const indicatorSettings = {smaPeriod: 20};
+const {simpleMovingAverage, relativeStrengthIndex, normalizePeriod} = AurumIndicators;
 
 const money = value => Number(value).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 const tickClock = () => document.querySelector('#clock').textContent = `${new Date().toISOString().slice(11, 19)} UTC`;
@@ -89,7 +90,7 @@ function draw() {
   const visible = candles.slice(start, end);
   if (!visible.length) return;
   const closes = candles.map(c => c.close);
-  const sma = simpleMovingAverage(closes, 20).slice(start, end);
+  const sma = simpleMovingAverage(closes, indicatorSettings.smaPeriod).slice(start, end);
   const rsi = relativeStrengthIndex(closes, 14).slice(start, end);
   let min = Math.min(...visible.map(c => c.low)), max = Math.max(...visible.map(c => c.high));
   if (indicatorVisibility.sma) {
@@ -102,7 +103,12 @@ function draw() {
   for (let i = 0; i <= 5; i++) { const py = pad.top + i * (h-pad.top-pad.bottom)/5; ctx.strokeStyle='#202631'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(0,py+.5);ctx.lineTo(w,py+.5);ctx.stroke(); ctx.fillStyle='#626d80';ctx.fillText(money(max-i*(max-min)/5),w-pad.right+10,py+3); }
   const step=(w-pad.right-pad.left)/visible.length, body=Math.max(2,Math.min(8,step*.62));
   visible.forEach((c,i)=>{const x=pad.left+i*step+step/2, color=c.close>=c.open?'#21c58e':'#ef5b63';ctx.strokeStyle=color;ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(x,y(c.high));ctx.lineTo(x,y(c.low));ctx.stroke();const top=Math.min(y(c.open),y(c.close)),height=Math.max(1,Math.abs(y(c.close)-y(c.open)));ctx.fillRect(x-body/2,top,body,height);});
-  if (indicatorVisibility.sma) drawLine(sma, value => y(value), step, pad.left, '#e7b95c', 1.7);
+  if (indicatorVisibility.sma) {
+    drawLine(sma, value => y(value), step, pad.left, '#e7b95c', 1.7);
+    const currentSma = [...sma].reverse().find(value => value !== null);
+    ctx.fillStyle = '#e7b95c'; ctx.font = '9px ui-monospace, monospace';
+    ctx.fillText(`SMA ${indicatorSettings.smaPeriod}${currentSma === undefined ? '' : `  ${money(currentSma)}`}`, pad.left, pad.top + 8);
+  }
   const last=visible.at(-1), py=y(last.close);ctx.strokeStyle=last.close>=last.open?'#21c58e88':'#ef5b6388';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(w-pad.right,py);ctx.stroke();ctx.setLineDash([]);
   const label=money(last.close), color=last.close>=last.open?'#21c58e':'#ef5b63';ctx.fillStyle=color;ctx.fillRect(w-pad.right,py-10,69,20);ctx.fillStyle='#07110e';ctx.fillText(label,w-pad.right+6,py+3);
   if (indicatorVisibility.rsi) drawRsi(rsi, step, pad, w, h);
@@ -157,13 +163,15 @@ function scheduleRefresh() {
 document.querySelectorAll('[data-timeframe]').forEach(button => button.addEventListener('click', () => {document.querySelector('.timeframes .active').classList.remove('active');button.classList.add('active');timeframe=button.dataset.timeframe;candles=[];viewEndIndex=null;loadData(true);}));
 document.querySelector('#zoom-in').addEventListener('click', () => updateZoom(-20));
 document.querySelector('#zoom-out').addEventListener('click', () => updateZoom(20));
-document.querySelectorAll('[data-indicator]').forEach(button => button.addEventListener('click', () => {
-  const name = button.dataset.indicator;
-  indicatorVisibility[name] = !indicatorVisibility[name];
-  button.classList.toggle('active', indicatorVisibility[name]);
-  button.setAttribute('aria-pressed', String(indicatorVisibility[name]));
+document.querySelectorAll('[data-indicator]').forEach(input => input.addEventListener('change', () => {
+  indicatorVisibility[input.dataset.indicator] = input.checked;
   draw();
 }));
+document.querySelector('#sma-period').addEventListener('change', event => {
+  indicatorSettings.smaPeriod = normalizePeriod(event.target.value);
+  event.target.value = indicatorSettings.smaPeriod;
+  draw();
+});
 canvas.addEventListener('wheel', event => {
   event.preventDefault();
   updateZoom(event.deltaY > 0 ? 20 : -20);

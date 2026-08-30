@@ -35,7 +35,12 @@
     return 100 - (100 / (1 + averageGain / averageLoss));
   }
 
-  const api = {simpleMovingAverage, relativeStrengthIndex};
+  function normalizePeriod(value, fallback = 20, minimum = 2, maximum = 200) {
+    const period = Math.round(Number(value));
+    return Math.max(minimum, Math.min(maximum, Number.isFinite(period) ? period : fallback));
+  }
+
+  const api = {simpleMovingAverage, relativeStrengthIndex, normalizePeriod};
   global.AurumIndicators = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 }(typeof globalThis === 'undefined' ? this : globalThis));
