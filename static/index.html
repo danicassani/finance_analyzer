@@ -37,6 +37,11 @@
             <button data-timeframe="1d">1D</button>
           </div>
           <div class="chart-controls">
+            <div class="indicator-controls" role="group" aria-label="Indicadores técnicos">
+              <span>INDICADORES</span>
+              <button class="indicator active" data-indicator="sma" type="button" aria-pressed="true"><i class="sma-dot"></i>SMA 20</button>
+              <button class="indicator active" data-indicator="rsi" type="button" aria-pressed="true"><i class="rsi-dot"></i>RSI 14</button>
+            </div>
             <div class="zoom-controls" role="group" aria-label="Controlar zoom de la gráfica">
               <button id="zoom-out" type="button" title="Alejar gráfica" aria-label="Alejar gráfica">−</button>
               <span id="zoom-level" aria-live="polite">100%</span>
@@ -60,6 +65,7 @@
       </section>
     </main>
     <footer><span>● SISTEMA OPERATIVO</span><p>Esta herramienta es informativa y no constituye asesoramiento financiero.</p><span>v0.1.0</span></footer>
+    <script src="/indicators.js"></script>
     <script src="/app.js"></script>
   </body>
 </html>

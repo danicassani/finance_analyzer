@@ -14,6 +14,8 @@ let refreshTimer;
 let refreshInterval = 15000;
 const MIN_VISIBLE_CANDLES = 20;
 const MAX_VISIBLE_CANDLES = 400;
+const indicatorVisibility = {sma: true, rsi: true};
+const {simpleMovingAverage, relativeStrengthIndex} = AurumIndicators;
 
 const money = value => Number(value).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 const tickClock = () => document.querySelector('#clock').textContent = `${new Date().toISOString().slice(11, 19)} UTC`;
@@ -80,21 +82,57 @@ function draw() {
   if (!candles.length) return;
   const ratio = window.devicePixelRatio || 1, rect = canvas.getBoundingClientRect();
   canvas.width = rect.width * ratio; canvas.height = rect.height * ratio; ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-  const w = rect.width, h = rect.height, pad = {top: 18, right: 72, bottom: 30, left: 16};
+  const w = rect.width, h = rect.height, rsiHeight = indicatorVisibility.rsi ? Math.min(120, h * .24) : 0;
+  const pad = {top: 18, right: 72, bottom: 30 + rsiHeight, left: 16};
   const end = Math.min(viewEndIndex ?? candles.length, candles.length);
   const start = Math.max(0, end - visibleCandleCount);
   const visible = candles.slice(start, end);
   if (!visible.length) return;
+  const closes = candles.map(c => c.close);
+  const sma = simpleMovingAverage(closes, 20).slice(start, end);
+  const rsi = relativeStrengthIndex(closes, 14).slice(start, end);
   let min = Math.min(...visible.map(c => c.low)), max = Math.max(...visible.map(c => c.high));
+  if (indicatorVisibility.sma) {
+    const availableSma = sma.filter(value => value !== null);
+    if (availableSma.length) { min = Math.min(min, ...availableSma); max = Math.max(max, ...availableSma); }
+  }
   const range = max - min || 1; min -= range * .06; max += range * .06;
   const y = value => pad.top + (max - value) / (max - min) * (h - pad.top - pad.bottom);
   ctx.clearRect(0, 0, w, h); ctx.font = '10px ui-monospace, monospace';
   for (let i = 0; i <= 5; i++) { const py = pad.top + i * (h-pad.top-pad.bottom)/5; ctx.strokeStyle='#202631'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(0,py+.5);ctx.lineTo(w,py+.5);ctx.stroke(); ctx.fillStyle='#626d80';ctx.fillText(money(max-i*(max-min)/5),w-pad.right+10,py+3); }
   const step=(w-pad.right-pad.left)/visible.length, body=Math.max(2,Math.min(8,step*.62));
   visible.forEach((c,i)=>{const x=pad.left+i*step+step/2, color=c.close>=c.open?'#21c58e':'#ef5b63';ctx.strokeStyle=color;ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(x,y(c.high));ctx.lineTo(x,y(c.low));ctx.stroke();const top=Math.min(y(c.open),y(c.close)),height=Math.max(1,Math.abs(y(c.close)-y(c.open)));ctx.fillRect(x-body/2,top,body,height);});
+  if (indicatorVisibility.sma) drawLine(sma, value => y(value), step, pad.left, '#e7b95c', 1.7);
   const last=visible.at(-1), py=y(last.close);ctx.strokeStyle=last.close>=last.open?'#21c58e88':'#ef5b6388';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(w-pad.right,py);ctx.stroke();ctx.setLineDash([]);
   const label=money(last.close), color=last.close>=last.open?'#21c58e':'#ef5b63';ctx.fillStyle=color;ctx.fillRect(w-pad.right,py-10,69,20);ctx.fillStyle='#07110e';ctx.fillText(label,w-pad.right+6,py+3);
-  const marks=5; for(let i=0;i<marks;i++){const index=Math.round(i*(visible.length-1)/(marks-1)),d=new Date(visible[index].time*1000),text=timeframe==='1d'?d.toLocaleDateString('es-ES',{day:'2-digit',month:'short'}):d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});ctx.fillStyle='#596477';ctx.fillText(text,pad.left+index*step,h-9);}
+  if (indicatorVisibility.rsi) drawRsi(rsi, step, pad, w, h);
+  const marks=5, timeY=indicatorVisibility.rsi ? h-rsiHeight-9 : h-9; for(let i=0;i<marks;i++){const index=Math.round(i*(visible.length-1)/(marks-1)),d=new Date(visible[index].time*1000),text=timeframe==='1d'?d.toLocaleDateString('es-ES',{day:'2-digit',month:'short'}):d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});ctx.fillStyle='#596477';ctx.fillText(text,pad.left+index*step,timeY);}
+}
+
+function drawLine(values, y, step, left, color, width) {
+  ctx.beginPath(); let started = false;
+  values.forEach((value, index) => {
+    if (value === null) { started = false; return; }
+    const x = left + index * step + step / 2;
+    if (!started) ctx.moveTo(x, y(value)); else ctx.lineTo(x, y(value));
+    started = true;
+  });
+  ctx.strokeStyle = color; ctx.lineWidth = width; ctx.stroke(); ctx.lineWidth = 1;
+}
+
+function drawRsi(values, step, pad, w, h) {
+  const top = h - (pad.bottom - 30) + 8, bottom = h - 20;
+  const rsiY = value => top + (100 - value) / 100 * (bottom - top);
+  ctx.fillStyle = '#0b0f16'; ctx.fillRect(0, top - 8, w - pad.right, bottom - top + 16);
+  ctx.font = '9px ui-monospace, monospace'; ctx.fillStyle = '#7e6c47'; ctx.fillText('RSI 14', pad.left, top + 8);
+  [70, 30].forEach(level => {
+    const py = rsiY(level); ctx.strokeStyle = '#55472e'; ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(w-pad.right, py); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#776b55'; ctx.fillText(String(level), w-pad.right+10, py+3);
+  });
+  drawLine(values, rsiY, step, pad.left, '#9a7de8', 1.5);
+  const current = [...values].reverse().find(value => value !== null);
+  if (current !== undefined) { ctx.fillStyle='#9a7de8'; ctx.fillText(current.toFixed(1), w-pad.right+30, rsiY(current)+3); }
 }
 
 function updateZoom(delta) {
@@ -119,6 +157,13 @@ function scheduleRefresh() {
 document.querySelectorAll('[data-timeframe]').forEach(button => button.addEventListener('click', () => {document.querySelector('.timeframes .active').classList.remove('active');button.classList.add('active');timeframe=button.dataset.timeframe;candles=[];viewEndIndex=null;loadData(true);}));
 document.querySelector('#zoom-in').addEventListener('click', () => updateZoom(-20));
 document.querySelector('#zoom-out').addEventListener('click', () => updateZoom(20));
+document.querySelectorAll('[data-indicator]').forEach(button => button.addEventListener('click', () => {
+  const name = button.dataset.indicator;
+  indicatorVisibility[name] = !indicatorVisibility[name];
+  button.classList.toggle('active', indicatorVisibility[name]);
+  button.setAttribute('aria-pressed', String(indicatorVisibility[name]));
+  draw();
+}));
 canvas.addEventListener('wheel', event => {
   event.preventDefault();
   updateZoom(event.deltaY > 0 ? 20 : -20);

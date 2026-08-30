@@ -1,6 +1,6 @@
 # Aurum · XAU/USD Live
 
-Dashboard ligero en Python para seguir la cotización spot de **XAU/USD** mediante velas japonesas. Incluye intervalos de 1 minuto a 1 día, zoom sobre la gráfica y actualización automática configurable entre 1 segundo y 1 minuto.
+Dashboard ligero en Python para seguir la cotización spot de **XAU/USD** mediante velas japonesas. Incluye intervalos de 1 minuto a 1 día, zoom, una media móvil simple de 20 periodos, RSI de 14 periodos y actualización automática configurable entre 1 segundo y 1 minuto.
 
 ## Ejecutar
 
@@ -16,7 +16,8 @@ Abre <http://localhost:8000>. Puedes cambiar el puerto con `PORT=9000 python app
 
 - La cotización procede del endpoint público de Yahoo Finance y es indicativa; puede sufrir retrasos o interrupciones.
 - El intervalo de 4 horas se construye agregando velas de 1 hora.
-- Esta primera versión es exclusivamente visual. Las señales, SL y TP se incorporarán en fases posteriores.
+- La SMA 20 y el RSI 14 se calculan en el navegador con todo el histórico cargado y se pueden activar o desactivar desde la barra de la gráfica.
+- Las señales, SL y TP se incorporarán en fases posteriores.
 
 ## Pruebas
 
