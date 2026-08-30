@@ -9,21 +9,23 @@ import time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlencode, urlparse
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).parent
 STATIC_DIR = ROOT / "static"
-YAHOO_URL = "https://query1.finance.yahoo.com/v8/finance/chart/XAUUSD=X"
+YAHOO_URL = "https://query1.finance.yahoo.com/v8/finance/chart/GC=F"
 
+# Yahoo limita las consultas de 1 minuto a ventanas inferiores a ocho días. Las
+# ventanas explícitas también permiten pedir el bloque anterior al arrastrar.
 TIMEFRAMES = {
-    "1m": ("1m", "1d", 1),
-    "5m": ("5m", "5d", 1),
-    "15m": ("15m", "5d", 1),
-    "30m": ("30m", "1mo", 1),
-    "1h": ("1h", "3mo", 1),
-    "4h": ("1h", "3mo", 4),
-    "1d": ("1d", "1y", 1),
+    "1m": ("1m", 7 * 86400, 1),
+    "5m": ("5m", 5 * 86400, 1),
+    "15m": ("15m", 5 * 86400, 1),
+    "30m": ("30m", 30 * 86400, 1),
+    "1h": ("1h", 90 * 86400, 1),
+    "4h": ("1h", 90 * 86400, 4),
+    "1d": ("1d", 365 * 86400, 1),
 }
 
 
@@ -48,13 +50,17 @@ def aggregate(candles: list[dict], size: int) -> list[dict]:
     return result
 
 
-def fetch_candles(timeframe: str) -> dict:
+def fetch_candles(timeframe: str, before: int | None = None) -> dict:
     """Obtiene y normaliza velas de spot gold desde Yahoo Finance."""
     if timeframe not in TIMEFRAMES:
         raise ValueError("Timeframe no válido")
-    interval, period, group_size = TIMEFRAMES[timeframe]
+    interval, window, group_size = TIMEFRAMES[timeframe]
+    period2 = int(time.time()) if before is None else int(before)
+    if period2 <= 0:
+        raise ValueError("Fecha no válida")
+    params = urlencode({"interval": interval, "period1": period2 - window, "period2": period2})
     request = Request(
-        f"{YAHOO_URL}?interval={interval}&range={period}",
+        f"{YAHOO_URL}?{params}",
         headers={"User-Agent": "Mozilla/5.0 XAUUSD-dashboard/1.0"},
     )
     with urlopen(request, timeout=10) as response:
@@ -92,7 +98,9 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             return super().do_GET()
         timeframe = parse_qs(parsed.query).get("timeframe", ["5m"])[0]
         try:
-            self.send_json(fetch_candles(timeframe), 200)
+            before_value = parse_qs(parsed.query).get("before", [None])[0]
+            before = int(before_value) if before_value is not None else None
+            self.send_json(fetch_candles(timeframe, before), 200)
         except ValueError as error:
             self.send_json({"error": str(error)}, 400)
         except (HTTPError, URLError, TimeoutError, KeyError, IndexError, json.JSONDecodeError) as error:
