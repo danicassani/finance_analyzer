@@ -36,7 +36,19 @@
             <button data-timeframe="1h">1H</button><button data-timeframe="4h">4H</button>
             <button data-timeframe="1d">1D</button>
           </div>
-          <div class="auto-refresh"><span class="refresh-icon">↻</span> Actualiza cada 15s</div>
+          <div class="chart-controls">
+            <div class="zoom-controls" role="group" aria-label="Controlar zoom de la gráfica">
+              <button id="zoom-out" type="button" title="Alejar gráfica" aria-label="Alejar gráfica">−</button>
+              <span id="zoom-level" aria-live="polite">100%</span>
+              <button id="zoom-in" type="button" title="Acercar gráfica" aria-label="Acercar gráfica">+</button>
+            </div>
+            <label class="auto-refresh" for="refresh-interval"><span class="refresh-icon">↻</span> Actualizar</label>
+            <select id="refresh-interval" aria-label="Tiempo de actualización">
+              <option value="1000">1s</option><option value="5000">5s</option>
+              <option value="10000">10s</option><option value="15000" selected>15s</option>
+              <option value="30000">30s</option><option value="60000">1 min</option>
+            </select>
+          </div>
         </div>
         <div class="ohlc" id="ohlc"><span>O —</span><span>H —</span><span>L —</span><span>C —</span></div>
         <div class="chart-wrap">
