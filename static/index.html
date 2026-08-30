@@ -40,9 +40,9 @@
             <details class="indicator-dropdown">
               <summary>Indicadores <span aria-hidden="true">⌄</span></summary>
               <div class="indicator-menu" aria-label="Indicadores técnicos">
-                <div class="indicator-row">
-                  <label><input data-indicator="sma" type="checkbox" checked><i class="sma-dot"></i>Media móvil simple</label>
-                  <label class="period-setting">Periodo <input id="sma-period" type="number" value="20" min="2" max="200" step="1" inputmode="numeric" aria-label="Periodo de la media móvil simple"></label>
+                <div class="indicator-section">
+                  <div class="indicator-heading"><strong>Medias móviles simples</strong><button id="add-sma" type="button">+ Añadir</button></div>
+                  <div id="sma-list"></div>
                 </div>
                 <div class="indicator-row">
                   <label><input data-indicator="rsi" type="checkbox" checked><i class="rsi-dot"></i>RSI 14</label>

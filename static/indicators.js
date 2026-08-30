@@ -40,7 +40,12 @@
     return Math.max(minimum, Math.min(maximum, Number.isFinite(period) ? period : fallback));
   }
 
-  const api = {simpleMovingAverage, relativeStrengthIndex, normalizePeriod};
+  function normalizeLineWidth(value, fallback = 2) {
+    const width = Number(value);
+    return Math.max(1, Math.min(5, Number.isFinite(width) ? width : fallback));
+  }
+
+  const api = {simpleMovingAverage, relativeStrengthIndex, normalizePeriod, normalizeLineWidth};
   global.AurumIndicators = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 }(typeof globalThis === 'undefined' ? this : globalThis));
