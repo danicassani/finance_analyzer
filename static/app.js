@@ -5,6 +5,11 @@ const errorBox = document.querySelector('#error');
 let candles = [];
 let timeframe = '5m';
 let visibleCandleCount = 120;
+let viewEndIndex = null;
+let isDragging = false;
+let dragStartX = 0;
+let dragStartEndIndex = 0;
+let loadingHistory = false;
 let refreshTimer;
 let refreshInterval = 15000;
 const MIN_VISIBLE_CANDLES = 20;
@@ -15,19 +20,49 @@ const tickClock = () => document.querySelector('#clock').textContent = `${new Da
 tickClock(); setInterval(tickClock, 1000);
 
 async function loadData(showLoader = false) {
+  const requestedTimeframe = timeframe;
   if (showLoader) loading.classList.remove('hidden');
   errorBox.classList.add('hidden');
   try {
     const response = await fetch(`/api/candles?timeframe=${timeframe}`, {cache: 'no-store'});
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Respuesta no válida');
-    candles = data.candles;
+    if (requestedTimeframe !== timeframe) return;
+    const wasAtLatest = viewEndIndex === null || viewEndIndex >= candles.length;
+    candles = mergeCandles(candles, data.candles);
+    if (wasAtLatest) viewEndIndex = candles.length;
     updateQuote(); draw();
     loading.classList.add('hidden');
   } catch (error) {
     loading.classList.add('hidden');
     errorBox.textContent = `${error.message}. Reintentaremos automáticamente.`;
     errorBox.classList.remove('hidden');
+  }
+}
+
+function mergeCandles(current, incoming) {
+  return [...new Map([...current, ...incoming].map(candle => [candle.time, candle])).values()]
+    .sort((a, b) => a.time - b.time);
+}
+
+async function loadOlderCandles() {
+  if (loadingHistory || !candles.length) return;
+  loadingHistory = true;
+  const requestedTimeframe = timeframe;
+  try {
+    const oldLength = candles.length;
+    const response = await fetch(`/api/candles?timeframe=${timeframe}&before=${candles[0].time}`, {cache: 'no-store'});
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'No se pudo cargar el histórico');
+    if (requestedTimeframe !== timeframe) return;
+    candles = mergeCandles(candles, data.candles);
+    viewEndIndex += candles.length - oldLength;
+    draw();
+  } catch (error) {
+    errorBox.textContent = error.message;
+    errorBox.classList.remove('hidden');
+  } finally {
+    loadingHistory = false;
   }
 }
 
@@ -46,7 +81,10 @@ function draw() {
   const ratio = window.devicePixelRatio || 1, rect = canvas.getBoundingClientRect();
   canvas.width = rect.width * ratio; canvas.height = rect.height * ratio; ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   const w = rect.width, h = rect.height, pad = {top: 18, right: 72, bottom: 30, left: 16};
-  const visible = candles.slice(-Math.min(visibleCandleCount, candles.length));
+  const end = Math.min(viewEndIndex ?? candles.length, candles.length);
+  const start = Math.max(0, end - visibleCandleCount);
+  const visible = candles.slice(start, end);
+  if (!visible.length) return;
   let min = Math.min(...visible.map(c => c.low)), max = Math.max(...visible.map(c => c.high));
   const range = max - min || 1; min -= range * .06; max += range * .06;
   const y = value => pad.top + (max - value) / (max - min) * (h - pad.top - pad.bottom);
@@ -67,18 +105,36 @@ function updateZoom(delta) {
   draw();
 }
 
+function panTo(endIndex) {
+  viewEndIndex = Math.max(1, Math.min(candles.length, endIndex));
+  draw();
+  if (viewEndIndex - visibleCandleCount < 30) loadOlderCandles();
+}
+
 function scheduleRefresh() {
   clearInterval(refreshTimer);
   refreshTimer = setInterval(() => loadData(false), refreshInterval);
 }
 
-document.querySelectorAll('[data-timeframe]').forEach(button => button.addEventListener('click', () => {document.querySelector('.timeframes .active').classList.remove('active');button.classList.add('active');timeframe=button.dataset.timeframe;loadData(true);}));
+document.querySelectorAll('[data-timeframe]').forEach(button => button.addEventListener('click', () => {document.querySelector('.timeframes .active').classList.remove('active');button.classList.add('active');timeframe=button.dataset.timeframe;candles=[];viewEndIndex=null;loadData(true);}));
 document.querySelector('#zoom-in').addEventListener('click', () => updateZoom(-20));
 document.querySelector('#zoom-out').addEventListener('click', () => updateZoom(20));
 canvas.addEventListener('wheel', event => {
   event.preventDefault();
   updateZoom(event.deltaY > 0 ? 20 : -20);
 }, {passive: false});
+canvas.addEventListener('mousedown', event => {
+  if (!candles.length || event.button !== 0) return;
+  isDragging = true; dragStartX = event.clientX; dragStartEndIndex = viewEndIndex ?? candles.length;
+  canvas.classList.add('dragging');
+});
+window.addEventListener('mousemove', event => {
+  if (!isDragging) return;
+  const chartWidth = Math.max(1, canvas.getBoundingClientRect().width - 88);
+  const candleDelta = Math.round((event.clientX - dragStartX) / chartWidth * visibleCandleCount);
+  panTo(dragStartEndIndex - candleDelta);
+});
+window.addEventListener('mouseup', () => { isDragging = false; canvas.classList.remove('dragging'); });
 document.querySelector('#refresh-interval').addEventListener('change', event => {
   refreshInterval = Number(event.target.value);
   scheduleRefresh();
