@@ -1,9 +1,23 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {simpleMovingAverage, relativeStrengthIndex, normalizePeriod, normalizeLineWidth} = require('../static/indicators.js');
+const {simpleMovingAverage, exponentialMovingAverage, averageTrueRange, relativeStrengthIndex, normalizePeriod, normalizeLineWidth} = require('../static/indicators.js');
 
 test('SMA starts after a complete period and keeps a rolling average', () => {
   assert.deepEqual(simpleMovingAverage([1, 2, 3, 4, 5], 3), [null, null, 2, 3, 4]);
+});
+
+test('EMA uses an SMA seed and applies exponential weighting', () => {
+  assert.deepEqual(exponentialMovingAverage([1, 2, 3, 4, 5], 3), [null, null, 2, 3, 4]);
+  assert.deepEqual(exponentialMovingAverage([2, 4, 8, 16], 2), [null, 3, 19 / 3, 115 / 9]);
+});
+
+test('ATR includes gaps and uses Wilder smoothing', () => {
+  const candles = [
+    {high: 12, low: 10, close: 11},
+    {high: 15, low: 13, close: 14},
+    {high: 14, low: 10, close: 11},
+  ];
+  assert.deepEqual(averageTrueRange(candles, 2), [null, 3, 3.5]);
 });
 
 test('RSI reports the expected limits for trends and neutral flat prices', () => {

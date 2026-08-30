@@ -44,8 +44,15 @@
                   <div class="indicator-heading"><strong>Medias móviles simples</strong><button id="add-sma" type="button">+ Añadir</button></div>
                   <div id="sma-list"></div>
                 </div>
+                <div class="indicator-section">
+                  <div class="indicator-heading"><strong>Medias móviles exponenciales</strong><button id="add-ema" type="button">+ Añadir</button></div>
+                  <div id="ema-list"></div>
+                </div>
                 <div class="indicator-row">
                   <label><input data-indicator="rsi" type="checkbox" checked><i class="rsi-dot"></i>RSI 14</label>
+                </div>
+                <div class="indicator-row">
+                  <label><input data-indicator="atr" type="checkbox" checked><i class="atr-dot"></i>ATR <input id="atr-period" class="indicator-period" type="number" value="14" min="2" max="200" aria-label="Periodo del ATR"></label>
                 </div>
               </div>
             </details>

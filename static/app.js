@@ -14,11 +14,14 @@ let refreshTimer;
 let refreshInterval = 15000;
 const MIN_VISIBLE_CANDLES = 20;
 const MAX_VISIBLE_CANDLES = 400;
-const indicatorVisibility = {rsi: true};
+const indicatorVisibility = {rsi: true, atr: true};
 const smaSettings = [{id: 1, period: 20, color: '#e7b95c', width: 2}];
+const emaSettings = [{id: 1, period: 20, color: '#55b9f3', width: 2}];
 const smaColors = ['#e7b95c', '#55b9f3', '#f17ca8', '#70d6a8', '#c792ea'];
 let nextSmaId = 2;
-const {simpleMovingAverage, relativeStrengthIndex, normalizePeriod, normalizeLineWidth} = AurumIndicators;
+let nextEmaId = 2;
+let atrPeriod = 14;
+const {simpleMovingAverage, exponentialMovingAverage, averageTrueRange, relativeStrengthIndex, normalizePeriod, normalizeLineWidth} = AurumIndicators;
 
 const money = value => Number(value).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 const tickClock = () => document.querySelector('#clock').textContent = `${new Date().toISOString().slice(11, 19)} UTC`;
@@ -85,8 +88,9 @@ function draw() {
   if (!candles.length) return;
   const ratio = window.devicePixelRatio || 1, rect = canvas.getBoundingClientRect();
   canvas.width = rect.width * ratio; canvas.height = rect.height * ratio; ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-  const w = rect.width, h = rect.height, rsiHeight = indicatorVisibility.rsi ? Math.min(120, h * .24) : 0;
-  const pad = {top: 18, right: 72, bottom: 30 + rsiHeight, left: 16};
+  const w = rect.width, h = rect.height, panelCount = Number(indicatorVisibility.rsi) + Number(indicatorVisibility.atr);
+  const panelHeight = panelCount ? Math.min(105, h * .36 / panelCount) : 0;
+  const pad = {top: 18, right: 72, bottom: 30 + panelHeight * panelCount, left: 16};
   const end = Math.min(viewEndIndex ?? candles.length, candles.length);
   const start = Math.max(0, end - visibleCandleCount);
   const visible = candles.slice(start, end);
@@ -96,11 +100,20 @@ function draw() {
     settings,
     values: simpleMovingAverage(closes, settings.period).slice(start, end),
   }));
+  const emaSeries = emaSettings.map(settings => ({
+    settings,
+    values: exponentialMovingAverage(closes, settings.period).slice(start, end),
+  }));
   const rsi = relativeStrengthIndex(closes, 14).slice(start, end);
+  const atr = averageTrueRange(candles, atrPeriod).slice(start, end);
   let min = Math.min(...visible.map(c => c.low)), max = Math.max(...visible.map(c => c.high));
   smaSeries.forEach(({values}) => {
     const availableSma = values.filter(value => value !== null);
     if (availableSma.length) { min = Math.min(min, ...availableSma); max = Math.max(max, ...availableSma); }
+  });
+  emaSeries.forEach(({values}) => {
+    const availableEma = values.filter(value => value !== null);
+    if (availableEma.length) { min = Math.min(min, ...availableEma); max = Math.max(max, ...availableEma); }
   });
   const range = max - min || 1; min -= range * .06; max += range * .06;
   const y = value => pad.top + (max - value) / (max - min) * (h - pad.top - pad.bottom);
@@ -114,10 +127,18 @@ function draw() {
     ctx.fillStyle = settings.color; ctx.font = '9px ui-monospace, monospace';
     ctx.fillText(`SMA ${settings.period}${currentSma === undefined ? '' : `  ${money(currentSma)}`}`, pad.left, pad.top + 8 + index * 13);
   });
+  emaSeries.forEach(({settings, values}, index) => {
+    drawLine(values, value => y(value), step, pad.left, settings.color, settings.width);
+    const currentEma = [...values].reverse().find(value => value !== null);
+    ctx.fillStyle = settings.color; ctx.font = '9px ui-monospace, monospace';
+    ctx.fillText(`EMA ${settings.period}${currentEma === undefined ? '' : `  ${money(currentEma)}`}`, pad.left + 135, pad.top + 8 + index * 13);
+  });
   const last=visible.at(-1), py=y(last.close);ctx.strokeStyle=last.close>=last.open?'#21c58e88':'#ef5b6388';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(w-pad.right,py);ctx.stroke();ctx.setLineDash([]);
   const label=money(last.close), color=last.close>=last.open?'#21c58e':'#ef5b63';ctx.fillStyle=color;ctx.fillRect(w-pad.right,py-10,69,20);ctx.fillStyle='#07110e';ctx.fillText(label,w-pad.right+6,py+3);
-  if (indicatorVisibility.rsi) drawRsi(rsi, step, pad, w, h);
-  const marks=5, timeY=indicatorVisibility.rsi ? h-rsiHeight-9 : h-9; for(let i=0;i<marks;i++){const index=Math.round(i*(visible.length-1)/(marks-1)),d=new Date(visible[index].time*1000),text=timeframe==='1d'?d.toLocaleDateString('es-ES',{day:'2-digit',month:'short'}):d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});ctx.fillStyle='#596477';ctx.fillText(text,pad.left+index*step,timeY);}
+  let panelTop = h - 22 - panelHeight * panelCount;
+  if (indicatorVisibility.rsi) { drawRsi(rsi, step, pad, w, panelTop, panelHeight); panelTop += panelHeight; }
+  if (indicatorVisibility.atr) drawAtr(atr, step, pad, w, panelTop, panelHeight);
+  const marks=5, timeY=panelCount ? h-panelHeight*panelCount-9 : h-9; for(let i=0;i<marks;i++){const index=Math.round(i*(visible.length-1)/(marks-1)),d=new Date(visible[index].time*1000),text=timeframe==='1d'?d.toLocaleDateString('es-ES',{day:'2-digit',month:'short'}):d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});ctx.fillStyle='#596477';ctx.fillText(text,pad.left+index*step,timeY);}
 }
 
 function drawLine(values, y, step, left, color, width) {
@@ -131,8 +152,8 @@ function drawLine(values, y, step, left, color, width) {
   ctx.strokeStyle = color; ctx.lineWidth = width; ctx.stroke(); ctx.lineWidth = 1;
 }
 
-function drawRsi(values, step, pad, w, h) {
-  const top = h - (pad.bottom - 30) + 8, bottom = h - 20;
+function drawRsi(values, step, pad, w, top, height) {
+  const bottom = top + height - 6;
   const rsiY = value => top + (100 - value) / 100 * (bottom - top);
   ctx.fillStyle = '#0b0f16'; ctx.fillRect(0, top - 8, w - pad.right, bottom - top + 16);
   ctx.font = '9px ui-monospace, monospace'; ctx.fillStyle = '#7e6c47'; ctx.fillText('RSI 14', pad.left, top + 8);
@@ -144,6 +165,18 @@ function drawRsi(values, step, pad, w, h) {
   drawLine(values, rsiY, step, pad.left, '#9a7de8', 1.5);
   const current = [...values].reverse().find(value => value !== null);
   if (current !== undefined) { ctx.fillStyle='#9a7de8'; ctx.fillText(current.toFixed(1), w-pad.right+30, rsiY(current)+3); }
+}
+
+function drawAtr(values, step, pad, w, top, height) {
+  const bottom = top + height - 6;
+  const available = values.filter(value => value !== null);
+  const maximum = Math.max(...available, 1);
+  const atrY = value => bottom - value / maximum * (height - 18);
+  ctx.fillStyle = '#0b0f16'; ctx.fillRect(0, top - 2, w - pad.right, height);
+  ctx.font = '9px ui-monospace, monospace'; ctx.fillStyle = '#55b9f3'; ctx.fillText(`ATR ${atrPeriod}`, pad.left, top + 10);
+  drawLine(values, atrY, step, pad.left, '#55b9f3', 1.5);
+  const current = [...values].reverse().find(value => value !== null);
+  if (current !== undefined) ctx.fillText(money(current), w - pad.right + 10, atrY(current) + 3);
 }
 
 function updateZoom(delta) {
@@ -168,24 +201,28 @@ function scheduleRefresh() {
 document.querySelectorAll('[data-timeframe]').forEach(button => button.addEventListener('click', () => {document.querySelector('.timeframes .active').classList.remove('active');button.classList.add('active');timeframe=button.dataset.timeframe;candles=[];viewEndIndex=null;loadData(true);}));
 document.querySelector('#zoom-in').addEventListener('click', () => updateZoom(-20));
 document.querySelector('#zoom-out').addEventListener('click', () => updateZoom(20));
-document.querySelectorAll('[data-indicator="rsi"]').forEach(input => input.addEventListener('change', () => {
+document.querySelectorAll('[data-indicator]').forEach(input => input.addEventListener('change', () => {
   indicatorVisibility[input.dataset.indicator] = input.checked;
   draw();
 }));
 const smaList = document.querySelector('#sma-list');
+const emaList = document.querySelector('#ema-list');
 
-function renderSmaControls() {
-  smaList.innerHTML = smaSettings.map((settings, index) => `
-    <div class="sma-config" data-sma-id="${settings.id}">
-      <div class="sma-config-title"><span><i style="background:${settings.color}"></i>SMA ${index + 1}</span><button class="remove-sma" type="button" aria-label="Eliminar SMA ${index + 1}">×</button></div>
+function renderAverageControls(type, settingsList, container) {
+  container.innerHTML = settingsList.map((settings, index) => `
+    <div class="sma-config" data-average-id="${settings.id}">
+      <div class="sma-config-title"><span><i style="background:${settings.color}"></i>${type} ${index + 1}</span><button class="remove-sma" type="button" aria-label="Eliminar ${type} ${index + 1}">×</button></div>
       <div class="sma-fields">
         <label>Periodo <input data-field="period" type="number" value="${settings.period}" min="2" max="200" step="1" inputmode="numeric"></label>
         <label>Color <input data-field="color" type="color" value="${settings.color}"></label>
         <label class="width-field">Grosor <input data-field="width" type="range" value="${settings.width}" min="1" max="5" step="0.5"><output>${settings.width} px</output></label>
       </div>
     </div>`).join('');
-  document.querySelector('#add-sma').disabled = smaSettings.length >= 8;
+  document.querySelector(`#add-${type.toLowerCase()}`).disabled = settingsList.length >= 8;
 }
+
+function renderSmaControls() { renderAverageControls('SMA', smaSettings, smaList); }
+function renderEmaControls() { renderAverageControls('EMA', emaSettings, emaList); }
 
 document.querySelector('#add-sma').addEventListener('click', () => {
   if (smaSettings.length >= 8) return;
@@ -196,14 +233,14 @@ document.querySelector('#add-sma').addEventListener('click', () => {
 smaList.addEventListener('click', event => {
   const button = event.target.closest('.remove-sma');
   if (!button) return;
-  const id = Number(button.closest('[data-sma-id]').dataset.smaId);
+  const id = Number(button.closest('[data-average-id]').dataset.averageId);
   smaSettings.splice(smaSettings.findIndex(settings => settings.id === id), 1);
   renderSmaControls(); draw();
 });
 smaList.addEventListener('input', event => {
   const field = event.target.dataset.field;
   if (!field) return;
-  const settings = smaSettings.find(item => item.id === Number(event.target.closest('[data-sma-id]').dataset.smaId));
+  const settings = smaSettings.find(item => item.id === Number(event.target.closest('[data-average-id]').dataset.averageId));
   if (field === 'color') settings.color = event.target.value;
   if (field === 'width') {
     settings.width = normalizeLineWidth(event.target.value);
@@ -213,9 +250,45 @@ smaList.addEventListener('input', event => {
 });
 smaList.addEventListener('change', event => {
   if (event.target.dataset.field !== 'period') return;
-  const settings = smaSettings.find(item => item.id === Number(event.target.closest('[data-sma-id]').dataset.smaId));
+  const settings = smaSettings.find(item => item.id === Number(event.target.closest('[data-average-id]').dataset.averageId));
   settings.period = normalizePeriod(event.target.value);
   event.target.value = settings.period;
+  draw();
+});
+document.querySelector('#add-ema').addEventListener('click', () => {
+  if (emaSettings.length >= 8) return;
+  const index = emaSettings.length;
+  emaSettings.push({id: nextEmaId++, period: 20 + index * 30, color: smaColors[(index + 1) % smaColors.length], width: 2});
+  renderEmaControls(); draw();
+});
+emaList.addEventListener('click', event => {
+  const button = event.target.closest('.remove-sma');
+  if (!button) return;
+  const id = Number(button.closest('[data-average-id]').dataset.averageId);
+  emaSettings.splice(emaSettings.findIndex(settings => settings.id === id), 1);
+  renderEmaControls(); draw();
+});
+emaList.addEventListener('input', event => {
+  const field = event.target.dataset.field;
+  if (!field) return;
+  const settings = emaSettings.find(item => item.id === Number(event.target.closest('[data-average-id]').dataset.averageId));
+  if (field === 'color') settings.color = event.target.value;
+  if (field === 'width') {
+    settings.width = normalizeLineWidth(event.target.value);
+    event.target.nextElementSibling.value = `${settings.width} px`;
+  }
+  draw();
+});
+emaList.addEventListener('change', event => {
+  if (event.target.dataset.field !== 'period') return;
+  const settings = emaSettings.find(item => item.id === Number(event.target.closest('[data-average-id]').dataset.averageId));
+  settings.period = normalizePeriod(event.target.value);
+  event.target.value = settings.period;
+  draw();
+});
+document.querySelector('#atr-period').addEventListener('change', event => {
+  atrPeriod = normalizePeriod(event.target.value, 14);
+  event.target.value = atrPeriod;
   draw();
 });
 canvas.addEventListener('wheel', event => {
@@ -240,4 +313,5 @@ document.querySelector('#refresh-interval').addEventListener('change', event => 
 });
 window.addEventListener('resize', draw);
 renderSmaControls();
+renderEmaControls();
 loadData(true); scheduleRefresh();

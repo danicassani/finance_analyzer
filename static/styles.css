@@ -23,3 +23,6 @@
 .sma-fields output{min-width:34px;color:#aeb6c5}
 .indicator-section+.indicator-row{border-top:1px solid var(--line)}
 @media(max-width:700px){.indicator-menu{position:fixed;top:125px;right:12px;left:12px;width:auto;max-height:60vh}}
+.atr-dot{background:#55b9f3}
+.indicator-period{margin-left:auto;width:52px;border:1px solid #3a4250;background:#0d1118;color:#d9dee7;padding:4px 5px;font:10px ui-monospace,monospace}
+.indicator-section+.indicator-section{border-top:1px solid var(--line)}

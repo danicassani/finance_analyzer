@@ -11,6 +11,35 @@
     return result;
   }
 
+  function exponentialMovingAverage(values, period) {
+    const result = Array(values.length).fill(null);
+    if (!Number.isInteger(period) || period <= 0 || values.length < period) return result;
+    const seed = values.slice(0, period).reduce((sum, value) => sum + value, 0) / period;
+    const multiplier = 2 / (period + 1);
+    result[period - 1] = seed;
+    for (let index = period; index < values.length; index += 1) {
+      result[index] = (values[index] - result[index - 1]) * multiplier + result[index - 1];
+    }
+    return result;
+  }
+
+  function averageTrueRange(candles, period = 14) {
+    const result = Array(candles.length).fill(null);
+    if (!Number.isInteger(period) || period <= 0 || candles.length < period) return result;
+    const trueRanges = candles.map((candle, index) => {
+      if (index === 0) return candle.high - candle.low;
+      const previousClose = candles[index - 1].close;
+      return Math.max(candle.high - candle.low, Math.abs(candle.high - previousClose), Math.abs(candle.low - previousClose));
+    });
+    let atr = trueRanges.slice(0, period).reduce((sum, value) => sum + value, 0) / period;
+    result[period - 1] = atr;
+    for (let index = period; index < candles.length; index += 1) {
+      atr = (atr * (period - 1) + trueRanges[index]) / period;
+      result[index] = atr;
+    }
+    return result;
+  }
+
   function relativeStrengthIndex(values, period = 14) {
     const result = Array(values.length).fill(null);
     if (!Number.isInteger(period) || period <= 0 || values.length <= period) return result;
@@ -45,7 +74,7 @@
     return Math.max(1, Math.min(5, Number.isFinite(width) ? width : fallback));
   }
 
-  const api = {simpleMovingAverage, relativeStrengthIndex, normalizePeriod, normalizeLineWidth};
+  const api = {simpleMovingAverage, exponentialMovingAverage, averageTrueRange, relativeStrengthIndex, normalizePeriod, normalizeLineWidth};
   global.AurumIndicators = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 }(typeof globalThis === 'undefined' ? this : globalThis));
