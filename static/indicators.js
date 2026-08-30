@@ -74,7 +74,22 @@
     return Math.max(1, Math.min(5, Number.isFinite(width) ? width : fallback));
   }
 
-  const api = {simpleMovingAverage, exponentialMovingAverage, averageTrueRange, relativeStrengthIndex, normalizePeriod, normalizeLineWidth};
+  function findRelativeExtrema(candles) {
+    const extrema = [];
+    if (!Array.isArray(candles) || candles.length < 3) return extrema;
+    for (let index = 1; index < candles.length - 1; index += 1) {
+      const previous = candles[index - 1], current = candles[index], next = candles[index + 1];
+      if (current.high > previous.high && current.high > next.high) {
+        extrema.push({index, type: 'maximum', value: current.high});
+      }
+      if (current.low < previous.low && current.low < next.low) {
+        extrema.push({index, type: 'minimum', value: current.low});
+      }
+    }
+    return extrema;
+  }
+
+  const api = {simpleMovingAverage, exponentialMovingAverage, averageTrueRange, relativeStrengthIndex, normalizePeriod, normalizeLineWidth, findRelativeExtrema};
   global.AurumIndicators = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 }(typeof globalThis === 'undefined' ? this : globalThis));

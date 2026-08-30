@@ -37,6 +37,7 @@
             <button data-timeframe="1d">1D</button>
           </div>
           <div class="chart-controls">
+            <button id="toggle-extrema" class="extrema-button" type="button" aria-pressed="false" title="Localizar máximos y mínimos relativos">Máx / mín</button>
             <details class="indicator-dropdown">
               <summary>Indicadores <span aria-hidden="true">⌄</span></summary>
               <div class="indicator-menu" aria-label="Indicadores técnicos">
@@ -75,7 +76,7 @@
           <div class="loading" id="loading"><span></span>Conectando con el mercado…</div>
           <div class="error hidden" id="error"></div>
         </div>
-        <div class="chart-footer"><span><i class="legend up"></i> Alcista</span><span><i class="legend down"></i> Bajista</span><span class="source">Datos: Yahoo Finance · Cotización indicativa</span></div>
+        <div class="chart-footer"><span><i class="legend up"></i> Alcista</span><span><i class="legend down"></i> Bajista</span><span id="extrema-legend" class="extrema-legend hidden"><i class="legend maximum"></i> Máximo relativo <i class="legend minimum"></i> Mínimo relativo</span><span class="source">Datos: Yahoo Finance · Cotización indicativa</span></div>
       </section>
     </main>
     <footer><span>● SISTEMA OPERATIVO</span><p>Esta herramienta es informativa y no constituye asesoramiento financiero.</p><span>v0.1.0</span></footer>
